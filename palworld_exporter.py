@@ -17,7 +17,7 @@ def update_active_users_count(mcr):
             res = mcr.command("ShowPlayers")
             palworld_active_users_count.set(res.count("\n") - 1)
             break
-        except MCRcon.MCRconException as e:
+        except:
             palworld_active_users_count.set(0)
             mcr.connect()
 

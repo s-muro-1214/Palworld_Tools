@@ -5,13 +5,6 @@ from mcrcon import MCRcon
 load_dotenv()
 
 
-def get_arrcon_cmd():
-    port = os.getenv('RCON_PORT')
-    passwd = os.getenv('RCON_PASSWD')
-
-    return f"ARRCON -H 127.0.0.1 -P {port} -p {passwd}"
-
-
 def get_active_user_count():
     with MCRcon("127.0.0.1", os.getenv('RCON_PASSWD'), int(os.getenv('RCON_PORT'))) as mcr:
         try:

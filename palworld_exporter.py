@@ -1,58 +1,32 @@
-import http.server
-import socketserver
-import threading
 import time
-import subprocess
 import os
-import palworld_utils
 from dotenv import load_dotenv
+from mcrcon import MCRcon
+from prometheus_client import start_http_server, Gauge
+
 
 load_dotenv()
 
-metrics = {}
-flag = False
+
+palworld_active_users_count = Gauge("palworld_active_users_count", "The number of active users in palworld server.")
 
 
-class PalWorldRequestHandler(http.server.BaseHTTPRequestHandler):
-    global metrics
-
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
-        self.end_headers()
-
-        self.wfile.write(b"# HELP palworld_active_users_count The number of active users in palworld server.\n")
-        self.wfile.write(b"# TYPE palworld_active_users_count gauge\n")
-        value = str(metrics["palworld_active_users_count"]).encode()
-        self.wfile.write(b"palworld_active_users_count " + value + b"\n")
-
-
-def update():
-    global metrics
-    global flag
-
-    while True:
-        sleep_to = time.time() + 5.0
-
-        metrics["palworld_active_users_count"] = palworld_utils.get_active_user_count()
-
-        while time.time() < sleep_to:
-            if flag:
-                return
-            time.sleep(1.0)
+def update_active_users_count(mcr):
+    for _ in range(3):
+        try:
+            res = mcr.command("ShowPlayers")
+            palworld_active_users_count.set(res.count("\n") - 1)
+            break
+        except MCRcon.MCRconException as e:
+            palworld_active_users_count.set(0)
+            mcr.connect()
 
 
 if __name__ == "__main__":
-    print("starting palworld-exporter")
-    thread = threading.Thread(target=update)
-    thread.start()
+    start_http_server(int(os.getenv('EXPORTER_PORT')))
 
-    Handler = PalWorldRequestHandler
-    host = os.getenv("EXPORTER_HOST")
-    port = os.getenv("EXPORTER_PORT")
-    with socketserver.TCPServer((host, int(port)), Handler) as httpd:
-        print(f"serving at http://{host}:{port}")
-        httpd.serve_forever()
-
-    flag = True
+    with MCRcon("127.0.0.1", os.getenv('RCON_PASSWD'), int(os.getenv('RCON_PORT'))) as mcr:
+        while True:
+            update_active_users_count(mcr)
+            time.sleep(10)
 

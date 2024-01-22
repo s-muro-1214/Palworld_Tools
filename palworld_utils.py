@@ -8,8 +8,8 @@ load_dotenv()
 def get_active_user_count():
     with MCRcon("127.0.0.1", os.getenv('RCON_PASSWD'), int(os.getenv('RCON_PORT'))) as mcr:
         try:
-            response = mcr.command("ShowPlayers")
-            return response.count("\n") - 1
+            res = mcr.command("ShowPlayers")
+            return res.count("\n") - 1
         except MCRcon.MCRconException as e:
             return 0
 
@@ -17,10 +17,11 @@ def get_active_user_count():
 def broadcast_message(message: str):
     with MCRcon("127.0.0.1", os.getenv('RCON_PASSWD'), int(os.getenv('RCON_PORT'))) as mcr:
         try:
-            mcr.command(f"Broadcast {message}")
+            res = mcr.command(f"Broadcast {message}")
+            print(res)
         except MCRcon.MCRconException as e:
             pass
     
 
 if __name__ == "__main__":
-    print(get_active_user_count())
+    broadcast_message("test_message")

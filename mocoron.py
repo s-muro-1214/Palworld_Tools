@@ -68,7 +68,7 @@ async def status(interaction: discord.Interaction):
     embed.add_field(name="パルワールドサーバー", value=get_status(), inline=True)
     embed.add_field(name="現在のログイン人数", value=palworld_utils.get_active_user_count(), inline=True)
 
-    await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=180)
+    await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=180.0)
 
 
 # サーバー起動
@@ -102,6 +102,7 @@ async def start(interaction: discord.Interaction, wait_sec: int = 60):
     else:
         try:
             await interaction.response.send_message(content=f"{wait_sec}秒後にサーバーを停止します")
+            palworld_utils.broadcast_message(f"Stop_Server_After_{wait_sec}Sec")
             await asyncio.sleep(wait_sec)
             subprocess.run("systemctl stop palworld-dedicated".split(), check=True)
         except subprocess.CalledProcessError as e:
@@ -119,6 +120,7 @@ async def start(interaction: discord.Interaction, wait_sec: int = 60):
 
     try:
         await interaction.response.send_message(content=f"{wait_sec}秒後にサーバーを再起動します")
+        palworld_utils.broadcast_message(f"Restart_Server_After_{wait_sec}Sec")
         await asyncio.sleep(wait_sec)
         subprocess.run("systemctl restart palworld-dedicated".split(), check=True)
         await interaction.edit_original_response(content="サーバーを再起動しました")
@@ -126,12 +128,32 @@ async def start(interaction: discord.Interaction, wait_sec: int = 60):
         await interaction.edit_original_response(content="サーバーの再起動に失敗しました")
 
 
+## 以下アドミン権限専用
+
+@tree.command(name = "broadcast", description = "Broadcastメッセージを送信する")
+@app_commands.describe(message = "送信するメッセージ内容。英語のみ、スペース不可")
+async def start(interaction: discord.Interaction, message: str):
+    if not is_admin(interaction.user.id):
+        await interaction.response.send_message(content="実行に必要な権限がありません")
+        return
+
+    await interaction.response.defer(ephemeral=True, thinking=True)
+    palworld_utils.broadcast_message(message)
+    await interaction.followup.send(content=f"{message} を送信しました", ephemeral=True)
+
+
+## 以下もろもろの関数
+
 def has_expect_role(roles):
     for role in roles:
         if role.id == int(os.getenv('PAL_ROLE')):
             return True
 
     return False
+
+
+def is_admin(id):
+    return id == int(os.getenv('PAL_ADMIN_ID'))
 
 
 def get_status():

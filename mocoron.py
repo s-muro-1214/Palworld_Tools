@@ -6,6 +6,7 @@ import subprocess
 import palworld_utils
 from discord import app_commands
 from dotenv import load_dotenv
+from typing import Tuple
 
 
 load_dotenv()
@@ -15,14 +16,12 @@ client = discord.Client(intents = intents)
 tree = app_commands.CommandTree(client)
 
 
-# 5分ごとにサーバーの稼働状態を更新する
+# 1秒ごとにサーバーの稼働状態をチェックする
 @client.event
 async def on_ready():
     await tree.sync()
 
-    while True:
-        await client.change_presence(activity = discord.Activity(name = f"サーバーは{get_status()}だよ", type = discord.ActivityType.playing))
-        await asyncio.sleep(30)
+    await update_server_status(1)
 
 
 # インタラクション処理
@@ -79,7 +78,7 @@ async def get_server_status(interaction: discord.Interaction):
     embed.add_field(name="Mem Free[GB]", value=free, inline=True)
     embed.add_field(name="Mem Used[GB]", value=used, inline=True)
     embed.add_field(name="Mem Available[GB]", value=available, inline=True)
-    embed.add_field(name="パルワールドサーバー", value=get_status(), inline=False)
+    embed.add_field(name="パルワールドサーバー", value=get_status()[0], inline=False)
     embed.add_field(name="現在のログイン人数", value=palworld_utils.get_active_user_count(), inline=True)
 
     await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=180.0)
@@ -227,15 +226,19 @@ def is_admin(id):
     return id == int(os.getenv('PAL_ADMIN_ID'))
 
 
-def get_status():
-    if is_server_running():
-        return "稼働中"
-    else:
-        return "停止中"
+def get_status() -> Tuple[str, int]:
+    return_code = subprocess.run("systemctl is-active palworld-dedicated".split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode
 
+    if return_code == 0:
+        return "稼働中", 0
+    else:
+        return "停止中", 1
+    
 
 def is_server_running():
-    return subprocess.run("systemctl is-active palworld-dedicated".split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0
+    server_status = get_status()
+
+    return server_status[1] == 0
 
 
 async def on_button_click(interaction: discord.Interaction):
@@ -250,6 +253,19 @@ async def on_button_click(interaction: discord.Interaction):
         await interaction.response.send_modal(Wait_Sec_Modal(stop_server))
     elif custom_id == "restart":
         await interaction.response.send_modal(Wait_Sec_Modal(restart_server))
+
+
+async def update_server_status(wait_sec: int = 5):
+    current_status_value = -1
+
+    while True:
+        name, value = get_status()
+        if current_status_value != value:
+            discord_status = discord.Status.online if value == 0 else discord.Status.dnd
+            await client.change_presence(activity=discord.Activity(name=f"サーバーは{name}だよ", type=discord.ActivityType.playing), status=discord_status)
+            current_status_value = value
+
+        await asyncio.sleep(wait_sec)
 
 
 class Wait_Sec_Modal(discord.ui.Modal):
@@ -277,5 +293,3 @@ class Wait_Sec_Modal(discord.ui.Modal):
 
 if __name__ == "__main__":
     client.run(os.getenv('DISCORD_TOKEN'))
-
-

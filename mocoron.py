@@ -22,7 +22,7 @@ async def on_ready():
 
     while True:
         await client.change_presence(activity = discord.Activity(name = f"サーバーは{get_status()}だよ", type = discord.ActivityType.playing))
-        await asyncio.sleep(300)
+        await asyncio.sleep(30)
 
 
 # インタラクション処理

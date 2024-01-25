@@ -4,6 +4,7 @@ import os
 import psutil
 import subprocess
 import palworld_utils
+from datetime import datetime
 from discord import app_commands
 from dotenv import load_dotenv
 from typing import Tuple
@@ -78,8 +79,10 @@ async def get_server_status(interaction: discord.Interaction):
     embed.add_field(name="Mem Free[GB]", value=free, inline=True)
     embed.add_field(name="Mem Used[GB]", value=used, inline=True)
     embed.add_field(name="Mem Available[GB]", value=available, inline=True)
-    embed.add_field(name="パルワールドサーバー", value=get_status()[0], inline=False)
+    embed.add_field(name="パルワールドサーバー", value=get_status()[0], inline=True)
     embed.add_field(name="現在のログイン人数", value=palworld_utils.get_active_user_count(), inline=True)
+    embed.add_field(name="サーバーメトリクス", value=f"[Grafana: PalWorld Server]({os.getenv('GRAFANA_URL')})", inline=False)
+    embed.set_footer(text=f"Server Time = {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}")
 
     await interaction.response.send_message(embed=embed, ephemeral=True, delete_after=180.0)
 
@@ -140,6 +143,8 @@ async def stop_server(interaction: discord.Interaction, wait_sec: int = 60):
             await interaction.response.send_message(content=f"{wait_sec}秒後にサーバーを停止します")
             palworld_utils.broadcast_message(f"Stop_Server_After_{wait_sec}Sec")
             await asyncio.sleep(wait_sec)
+            palworld_utils.run_save_command()
+            await asyncio.sleep(3)
             subprocess.run("systemctl stop palworld-dedicated".split(), check=True)
             await interaction.edit_original_response(content="サーバーを停止しました")
         except subprocess.CalledProcessError as e:
@@ -163,6 +168,8 @@ async def restart_server(interaction: discord.Interaction, wait_sec: int = 60):
         await interaction.response.send_message(content=f"{wait_sec}秒後にサーバーを再起動します")
         palworld_utils.broadcast_message(f"Restart_Server_After_{wait_sec}Sec")
         await asyncio.sleep(wait_sec)
+        palworld_utils.run_save_command()
+        await asyncio.sleep(3)
         subprocess.run("systemctl restart palworld-dedicated".split(), check=True)
         await interaction.edit_original_response(content="サーバーを再起動しました")
     except subprocess.CalledProcessError as e:

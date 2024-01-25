@@ -5,6 +5,18 @@ from mcrcon import MCRcon
 load_dotenv()
 
 
+def run_save_command():
+    try:
+        with MCRcon("127.0.0.1", os.getenv('RCON_PASSWD'), int(os.getenv('RCON_PORT'))) as mcr:
+            try:
+                res = mcr.command("Save")
+                print(res)
+            except:
+                pass
+    except ConnectionRefusedError:
+        pass
+        
+
 def get_active_user_count():
     try:
         with MCRcon("127.0.0.1", os.getenv('RCON_PASSWD'), int(os.getenv('RCON_PORT'))) as mcr:
@@ -28,6 +40,3 @@ def broadcast_message(message: str):
     except ConnectionRefusedError:
         pass
     
-
-if __name__ == "__main__":
-    broadcast_message("test_message")
